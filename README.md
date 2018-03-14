@@ -10,7 +10,7 @@ repo = 'MRtrix3/mrtrix3'
 user = 'jdtournier'
 password = 'gngkasgndfgknldsafnfknxgkjd'
 ```
-where `password` above should contain your personal authentication token, as [generated from your GitHub acccount](). 
+where `password` above should contain your personal authentication token, as [generated from your GitHub acccount](https://github.com/settings/tokens). 
 
 You can then invoke this script from the toplevel folder of your 
 repo, and redirect the output to a file, or copy/paste the output 
