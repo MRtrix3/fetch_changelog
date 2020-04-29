@@ -3,7 +3,7 @@ from the last tag, then fetches the corresponding information
 from GitHub and formats it into markdown format suitable for 
 use in e.g. Discourse.
 
-To use, please add create a 'fetch_changelog_settings' file 
+To use, please add create a `fetch_changelog_settings` file 
 in the toplevel of your repo folder, with the correct information:
 ```
 repo = 'MRtrix3/mrtrix3'
