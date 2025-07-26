@@ -1,27 +1,22 @@
 #!/usr/bin/env python
 
-# copy/paste the following into a standalone 'fetch_changelog_settings' file,
-# and amend with the appropriate information:
-
-repo = 'MRtrix3/mrtrix3'
-user = 'YOUR_GITHUB_USERNAME'
-# set this to your personal access token, which can generate from GitHub at:
-# https://github.com/settings/tokens
-password = 'YOUR_GITHUB_TOKEN'
-
-
-
-
-
-
-
 import os, subprocess, requests, sys
+
+fetch = True
+
+for arg in sys.argv[1:]:
+  if arg.startswith ('--tag='):
+    base_tag = arg[6:]
+  elif arg == '--no-fetch':
+    fetch = False
+
+
 
 try:
   with open('fetch_changelog_settings') as fd:
     exec (fd.read())
 except:
-  sys.stderr.write ('no fetch_changelog_settings file found - using built-in defaults')
+  sys.stderr.write ('no fetch_changelog_settings file found - using built-in defaults\n')
 
 
 
@@ -39,7 +34,10 @@ def get_list_of_merges (base, branch):
 
 def get_pull_request (number):
   url = 'https://api.github.com/repos/' + repo + '/pulls/' + str(number)
-  resp = requests.get (url, auth= (user, password))
+  try:
+    resp = requests.get (url, auth= (user, password))
+  except NameError:
+    resp = requests.get (url)
 
   if resp.status_code != 200:
     sys.stderr.write ('error fetching request ' + str(number) +' with response: ' + str(resp.status_code) + '\n')
@@ -49,15 +47,36 @@ def get_pull_request (number):
 
   return resp
 
+branch = subprocess.check_output (['git', 'rev-parse', '--abbrev-ref', 'HEAD']).decode(encoding='utf-8').strip()
+remote = subprocess.check_output (['git', 'rev-parse', '--symbolic-full-name', '--abbrev-ref', branch+'@{u}' ]).decode(encoding='utf-8').strip().split('/')[0]
+repo = subprocess.check_output (['git', 'remote', 'get-url', remote]).decode(encoding='utf-8').strip()
+if repo.startswith ('git@'):
+  [url, repo] = repo[4:].split(':',1)
+elif repo.startswith ('https://'):
+  [url, repo] = repo[8:].split('/',1)
+else:
+  sys.stderr.write ('unexpected format for repo URL: "' + repo + '"')
+  sys.exit (1)
 
+if url != "github.com":
+  sys.stderr.write ('upstream URL for current branch is not on github.com - unable to fetch issue listing\n')
+  sys.exit(1)
 
+if repo.endswith ('.git'):
+  repo = repo[:-4]
 
-base_tag = subprocess.check_output (['git', 'describe', '--abbrev=0']).decode(encoding='utf-8').strip()
-sys.stderr.write ('using base: ' + base_tag + '\n')
+try:
+  base_tag
+except NameError:
+  base_tag = subprocess.check_output (['git', 'describe', '--abbrev=0']).decode(encoding='utf-8').strip()
+sys.stderr.write ('fetching changelog since tag "' + base_tag + '" for branch "' + branch + '" on remote: "' + remote + '" (' + repo + ')\n')
 
 merges = get_list_of_merges (base_tag, 'HEAD')
 sys.stderr.write ('found pull requests ' + str(merges) + '\n')
 
+
+if not fetch:
+  sys.exit (0)
 
 for number in merges:
   sys.stderr.write (str(number) + ' ')
