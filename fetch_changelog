@@ -9,14 +9,43 @@ for arg in sys.argv[1:]:
     base_tag = arg[6:]
   elif arg == '--no-fetch':
     fetch = False
+  elif arg == '--help':
+    print ('''
+Usage:
+
+    cd target_repo
+    <path-to-fetchchangelog-folder>/fetch_changelog [options] > changelog.txt
+
+If necessary, the base tag (the latest point to include in the changelog) can
+be specified using the --tag=<tag> option. By default, the most recent tag on
+the current branch is used as the base tag.
+
+For testing, you may wish to use the --no-fetch option, which will not use
+the GitHub API to fetch the details of each merged pull request.
+
+If you need to get around the rate limiting imposed by the GitHub API, you
+can generate a personal access token from your GitHub account settings (under
+'Developer Settings'), and add that token in a file called
+'fetch_changelog_settings' stored in the root of the target repo (the one you
+want the changelog for), in the format:
+
+    user = 'github_handle'
+    password = 'github_pat_XXYYYAAA'
+
+''')
+    sys.exit (0)
+  else:
+    sys.stderr.write ('unknown command-line option "'+arg+'" - aborting\n')
+    sys.exit (1)
 
 
 
 try:
   with open('fetch_changelog_settings') as fd:
     exec (fd.read())
-except:
+except (FileNotFoundError, IOError):
   sys.stderr.write ('no fetch_changelog_settings file found - using built-in defaults\n')
+
 
 
 
@@ -35,7 +64,7 @@ def get_list_of_merges (base, branch):
 def get_pull_request (number):
   url = 'https://api.github.com/repos/' + repo + '/pulls/' + str(number)
   try:
-    resp = requests.get (url, auth= (user, password))
+    resp = requests.get (url, auth=(user, password))
   except NameError:
     resp = requests.get (url)
 
@@ -72,7 +101,7 @@ except NameError:
 sys.stderr.write ('fetching changelog since tag "' + base_tag + '" for branch "' + branch + '" on remote: "' + remote + '" (' + repo + ')\n')
 
 merges = get_list_of_merges (base_tag, 'HEAD')
-sys.stderr.write ('found pull requests ' + str(merges) + '\n')
+sys.stderr.write ('found pull requests ' + str(merges) + '\n\n')
 
 
 if not fetch:
@@ -84,8 +113,11 @@ for number in merges:
   resp = get_pull_request(number).json()
   description= resp['title']
   user = resp['user']['login']
-  body = '\n    '.join (resp['body'].splitlines())
-  sys.stdout.write ('- [![|24x24](https://github.com/'+user+'.png?size=24)](https://github.com/'+user+') ['+description+'](https://github.com/MRtrix3/mrtrix3/pull/'+str(number)+') ' + body + '\n')
+  if resp['body']:
+    body = '\n    '.join (resp['body'].splitlines())
+  else:
+    body = ''
+  sys.stdout.write ('- [<img src="https://github.com/'+user+'.png?size=24" alt="avatar for '+user+'" width=24 height=24 />](https://github.com/'+user+') ['+description+'](https://github.com/MRtrix3/mrtrix3/pull/'+str(number)+') ' + body + '\n\n')
 
 sys.stderr.write ('\ndone\n')
 
